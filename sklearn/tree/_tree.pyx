@@ -613,6 +613,7 @@ cdef class Tree:
         self.node_count = 0
         self.capacity = 0
         self.value = NULL
+        self.value_ndarray = None
         self.nodes = NULL
 
     def __dealloc__(self):
@@ -643,6 +644,7 @@ cdef class Tree:
         self.max_depth = d["max_depth"]
         self.node_count = d["node_count"]
 
+        # Load nodes
         if 'nodes' not in d:
             raise ValueError('You have loaded Tree version which '
                              'cannot be imported')
@@ -650,30 +652,36 @@ cdef class Tree:
         node_ndarray = d['nodes']
         value_ndarray = d['values']
 
-        value_shape = (node_ndarray.shape[0], self.n_outputs,
-                       self.max_n_classes)
-
         if (node_ndarray.dtype != NODE_DTYPE):
             # possible mismatch of big/little endian due to serialization
-            # on a different architecture. Try swapping the byte order.  
+            # on a different architecture. Try swapping the byte order.
             node_ndarray = node_ndarray.byteswap().newbyteorder()
             if (node_ndarray.dtype != NODE_DTYPE):
-                raise ValueError('Did not recognise loaded array dytpe')
+                raise ValueError('Did not recognise loaded array dtype')
 
         if (node_ndarray.ndim != 1 or
-                not node_ndarray.flags.c_contiguous or
-                value_ndarray.shape != value_shape or
-                not value_ndarray.flags.c_contiguous or
-                value_ndarray.dtype != np.float64):
-            raise ValueError('Did not recognise loaded array layout')
+            not node_ndarray.flags.c_contiguous):
+            raise ValueError('Did not recognise loaded node array layout')
 
         self.capacity = node_ndarray.shape[0]
-        if self._resize_c(self.capacity) != 0:
+        if self._resize_c(self.capacity, self.value_ndarray==None) != 0:
             raise MemoryError("resizing tree to %d" % self.capacity)
+
         nodes = memcpy(self.nodes, (<np.ndarray> node_ndarray).data,
                        self.capacity * sizeof(Node))
-        value = memcpy(self.value, (<np.ndarray> value_ndarray).data,
-                       self.capacity * self.value_stride * sizeof(double))
+
+        # Load values
+        if self.value_ndarray == None:
+            value_shape = (node_ndarray.shape[0], self.n_outputs,
+                           self.max_n_classes)
+
+            if (value_ndarray.shape != value_shape or
+                not value_ndarray.flags.c_contiguous or
+                value_ndarray.dtype != np.float64):
+                raise ValueError('Did not recognise loaded value array layout')
+
+            value = memcpy(self.value, (<np.ndarray> value_ndarray).data,
+                        self.capacity * self.value_stride * sizeof(double))
 
     cdef int _resize(self, SIZE_t capacity) nogil except -1:
         """Resize all inner arrays to `capacity`, if `capacity` == -1, then
@@ -687,7 +695,9 @@ cdef class Tree:
             with gil:
                 raise MemoryError()
 
-    cdef int _resize_c(self, SIZE_t capacity=SIZE_MAX) nogil except -1:
+    cdef int _resize_c(
+            self, SIZE_t capacity=SIZE_MAX, bint resize_value=True
+            ) nogil except -1:
         """Guts of _resize
 
         Returns -1 in case of failure to allocate memory (and raise MemoryError)
@@ -703,13 +713,16 @@ cdef class Tree:
                 capacity = 2 * self.capacity
 
         safe_realloc(&self.nodes, capacity)
-        safe_realloc(&self.value, capacity * self.value_stride)
 
-        # value memory is initialised to 0 to enable classifier argmax
-        if capacity > self.capacity:
-            memset(<void*>(self.value + self.capacity * self.value_stride), 0,
-                   (capacity - self.capacity) * self.value_stride *
-                   sizeof(double))
+        if resize_value:
+            safe_realloc(&self.value, capacity * self.value_stride)
+
+            # value memory is initialised to 0 to enable classifier argmax
+            if capacity > self.capacity:
+                memset(
+                    <void*>(self.value + self.capacity * self.value_stride), 0,
+                    (capacity - self.capacity) * self.value_stride *
+                        sizeof(double))
 
         # if capacity smaller than node_count, adjust the counter
         if capacity < self.node_count:
@@ -1082,21 +1095,31 @@ cdef class Tree:
 
         return importances
 
+    cpdef convert_value_to_ndarray(self, object dtype):
+        """Convert internal value data structure to NumPy array."""
+        self.value_ndarray = self._get_value_ndarray().astype(dtype)
+        free(self.value)
+        self.value = NULL
+
     cdef np.ndarray _get_value_ndarray(self):
         """Wraps value as a 3-d NumPy array.
 
-        The array keeps a reference to this Tree, which manages the underlying
-        memory.
+        If `convert_value_to_ndarray` as has not been called, the array keeps
+        a reference to this Tree, which then manages the underlying memory.
         """
         cdef np.npy_intp shape[3]
-        shape[0] = <np.npy_intp> self.node_count
-        shape[1] = <np.npy_intp> self.n_outputs
-        shape[2] = <np.npy_intp> self.max_n_classes
         cdef np.ndarray arr
-        arr = np.PyArray_SimpleNewFromData(3, shape, np.NPY_DOUBLE, self.value)
-        Py_INCREF(self)
-        if PyArray_SetBaseObject(arr, <PyObject*> self) < 0:
-            raise ValueError("Can't initialize array.")
+
+        if self.value_ndarray is not None:
+            arr = self.value_ndarray
+        else:
+            shape[0] = <np.npy_intp> self.node_count
+            shape[1] = <np.npy_intp> self.n_outputs
+            shape[2] = <np.npy_intp> self.max_n_classes
+            arr = np.PyArray_SimpleNewFromData(3, shape, np.NPY_DOUBLE, self.value)
+            Py_INCREF(self)
+            if PyArray_SetBaseObject(arr, <PyObject*> self) < 0:
+                raise ValueError("Can't initialize array.")
         return arr
 
     cdef np.ndarray _get_node_ndarray(self):

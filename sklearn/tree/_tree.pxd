@@ -52,6 +52,7 @@ cdef class Tree:
     cdef public SIZE_t capacity          # Capacity of tree, in terms of nodes
     cdef Node* nodes                     # Array of nodes
     cdef double* value                   # (capacity, n_outputs, max_n_classes) array of values
+    cdef np.ndarray value_ndarray        # values a ndarray
     cdef SIZE_t value_stride             # = n_outputs * max_n_classes
 
     # Methods
@@ -60,8 +61,10 @@ cdef class Tree:
                           SIZE_t n_node_samples,
                           double weighted_n_samples) nogil except -1
     cdef int _resize(self, SIZE_t capacity) nogil except -1
-    cdef int _resize_c(self, SIZE_t capacity=*) nogil except -1
+    cdef int _resize_c(self, SIZE_t capacity=*, bint resize_value=*
+                       ) nogil except -1
 
+    cpdef convert_value_to_ndarray(self, object dtype)
     cdef np.ndarray _get_value_ndarray(self)
     cdef np.ndarray _get_node_ndarray(self)
 

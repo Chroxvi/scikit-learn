@@ -99,7 +99,8 @@ class BaseDecisionTree(MultiOutputMixin, BaseEstimator, metaclass=ABCMeta):
                  min_impurity_decrease,
                  min_impurity_split,
                  class_weight=None,
-                 ccp_alpha=0.0):
+                 ccp_alpha=0.0,
+                 store_tree_astype=None):
         self.criterion = criterion
         self.splitter = splitter
         self.max_depth = max_depth
@@ -113,6 +114,7 @@ class BaseDecisionTree(MultiOutputMixin, BaseEstimator, metaclass=ABCMeta):
         self.min_impurity_split = min_impurity_split
         self.class_weight = class_weight
         self.ccp_alpha = ccp_alpha
+        self.store_tree_astype = store_tree_astype
 
     def get_depth(self):
         """Return the depth of the decision tree.
@@ -388,6 +390,9 @@ class BaseDecisionTree(MultiOutputMixin, BaseEstimator, metaclass=ABCMeta):
             self.classes_ = self.classes_[0]
 
         self._prune_tree()
+
+        if self.store_tree_astype is not None:
+            self.tree_.convert_value_to_ndarray(self.store_tree_astype)
 
         return self
 
@@ -836,7 +841,8 @@ class DecisionTreeClassifier(ClassifierMixin, BaseDecisionTree):
                  min_impurity_decrease=0.,
                  min_impurity_split=None,
                  class_weight=None,
-                 ccp_alpha=0.0):
+                 ccp_alpha=0.0,
+                 store_tree_astype=None):
         super().__init__(
             criterion=criterion,
             splitter=splitter,
@@ -850,7 +856,8 @@ class DecisionTreeClassifier(ClassifierMixin, BaseDecisionTree):
             random_state=random_state,
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
-            ccp_alpha=ccp_alpha)
+            ccp_alpha=ccp_alpha,
+            store_tree_astype=store_tree_astype)
 
     def fit(self, X, y, sample_weight=None, check_input=True,
             X_idx_sorted="deprecated"):
@@ -1186,7 +1193,8 @@ class DecisionTreeRegressor(RegressorMixin, BaseDecisionTree):
                  max_leaf_nodes=None,
                  min_impurity_decrease=0.,
                  min_impurity_split=None,
-                 ccp_alpha=0.0):
+                 ccp_alpha=0.0,
+                 store_tree_astype=None):
         super().__init__(
             criterion=criterion,
             splitter=splitter,
@@ -1199,7 +1207,8 @@ class DecisionTreeRegressor(RegressorMixin, BaseDecisionTree):
             random_state=random_state,
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
-            ccp_alpha=ccp_alpha)
+            ccp_alpha=ccp_alpha,
+            store_tree_astype=store_tree_astype)
 
     def fit(self, X, y, sample_weight=None, check_input=True,
             X_idx_sorted="deprecated"):
