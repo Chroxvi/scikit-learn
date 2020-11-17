@@ -1206,8 +1206,12 @@ cdef class Tree:
 
                 if current_node.left_child == _TREE_LEAF:
                     # leaf node
-                    out[sample_idx] += (weight_stack[stack_size] *
-                                        self.value[current_node_idx])
+                    if self.value == NULL:
+                        out[sample_idx] += (weight_stack[stack_size] *
+                                            self.value_ndarray.data[current_node_idx])
+                    else:
+                        out[sample_idx] += (weight_stack[stack_size] *
+                                            self.value[current_node_idx])
                     total_weight += weight_stack[stack_size]
                 else:
                     # non-leaf node
