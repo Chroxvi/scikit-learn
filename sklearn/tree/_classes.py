@@ -457,10 +457,11 @@ class BaseDecisionTree(MultiOutputMixin, BaseEstimator, metaclass=ABCMeta):
         # Regression
         else:
             if self.n_outputs_ == 1:
-                return proba[:, 0]
-
+                reg_proba = proba[:, 0]
             else:
-                return proba[:, :, 0]
+                reg_proba = proba[:, :, 0]
+
+            return reg_proba.astype(np.float64, copy=False)
 
     def apply(self, X, check_input=True):
         """Return the index of the leaf that each sample is predicted as.
@@ -1508,7 +1509,8 @@ class ExtraTreeClassifier(DecisionTreeClassifier):
                  min_impurity_decrease=0.,
                  min_impurity_split=None,
                  class_weight=None,
-                 ccp_alpha=0.0):
+                 ccp_alpha=0.0,
+                 store_tree_astype=None):
         super().__init__(
             criterion=criterion,
             splitter=splitter,
@@ -1522,7 +1524,8 @@ class ExtraTreeClassifier(DecisionTreeClassifier):
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
             random_state=random_state,
-            ccp_alpha=ccp_alpha)
+            ccp_alpha=ccp_alpha,
+            store_tree_astype=store_tree_astype)
 
 
 class ExtraTreeRegressor(DecisionTreeRegressor):
@@ -1728,7 +1731,8 @@ class ExtraTreeRegressor(DecisionTreeRegressor):
                  min_impurity_decrease=0.,
                  min_impurity_split=None,
                  max_leaf_nodes=None,
-                 ccp_alpha=0.0):
+                 ccp_alpha=0.0,
+                 store_tree_astype=None):
         super().__init__(
             criterion=criterion,
             splitter=splitter,
@@ -1741,4 +1745,5 @@ class ExtraTreeRegressor(DecisionTreeRegressor):
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
             random_state=random_state,
-            ccp_alpha=ccp_alpha)
+            ccp_alpha=ccp_alpha,
+            store_tree_astype=store_tree_astype)

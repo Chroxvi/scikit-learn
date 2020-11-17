@@ -1170,9 +1170,11 @@ class RandomForestClassifier(ForestClassifier):
                  warm_start=False,
                  class_weight=None,
                  ccp_alpha=0.0,
-                 max_samples=None):
+                 max_samples=None,
+                 store_tree_astype=None):
         super().__init__(
-            base_estimator=DecisionTreeClassifier(),
+            base_estimator=DecisionTreeClassifier(
+                store_tree_astype=store_tree_astype),
             n_estimators=n_estimators,
             estimator_params=("criterion", "max_depth", "min_samples_split",
                               "min_samples_leaf", "min_weight_fraction_leaf",
@@ -1198,6 +1200,7 @@ class RandomForestClassifier(ForestClassifier):
         self.min_impurity_decrease = min_impurity_decrease
         self.min_impurity_split = min_impurity_split
         self.ccp_alpha = ccp_alpha
+        self.store_tree_astype = store_tree_astype
 
 
 class RandomForestRegressor(ForestRegressor):
@@ -1460,9 +1463,11 @@ class RandomForestRegressor(ForestRegressor):
                  verbose=0,
                  warm_start=False,
                  ccp_alpha=0.0,
-                 max_samples=None):
+                 max_samples=None,
+                 store_tree_astype=None):
         super().__init__(
-            base_estimator=DecisionTreeRegressor(),
+            base_estimator=DecisionTreeRegressor(
+                store_tree_astype=store_tree_astype),
             n_estimators=n_estimators,
             estimator_params=("criterion", "max_depth", "min_samples_split",
                               "min_samples_leaf", "min_weight_fraction_leaf",
@@ -1487,6 +1492,7 @@ class RandomForestRegressor(ForestRegressor):
         self.min_impurity_decrease = min_impurity_decrease
         self.min_impurity_split = min_impurity_split
         self.ccp_alpha = ccp_alpha
+        self.store_tree_astype = store_tree_astype
 
 
 class ExtraTreesClassifier(ForestClassifier):
@@ -1772,9 +1778,11 @@ class ExtraTreesClassifier(ForestClassifier):
                  warm_start=False,
                  class_weight=None,
                  ccp_alpha=0.0,
-                 max_samples=None):
+                 max_samples=None,
+                 store_tree_astype=None):
         super().__init__(
-            base_estimator=ExtraTreeClassifier(),
+            base_estimator=ExtraTreeClassifier(
+                store_tree_astype=store_tree_astype),
             n_estimators=n_estimators,
             estimator_params=("criterion", "max_depth", "min_samples_split",
                               "min_samples_leaf", "min_weight_fraction_leaf",
@@ -1800,6 +1808,7 @@ class ExtraTreesClassifier(ForestClassifier):
         self.min_impurity_decrease = min_impurity_decrease
         self.min_impurity_split = min_impurity_split
         self.ccp_alpha = ccp_alpha
+        self.store_tree_astype = store_tree_astype
 
 
 class ExtraTreesRegressor(ForestRegressor):
@@ -2052,9 +2061,11 @@ class ExtraTreesRegressor(ForestRegressor):
                  verbose=0,
                  warm_start=False,
                  ccp_alpha=0.0,
-                 max_samples=None):
+                 max_samples=None,
+                 store_tree_astype=None):
         super().__init__(
-            base_estimator=ExtraTreeRegressor(),
+            base_estimator=ExtraTreeRegressor(
+                store_tree_astype=store_tree_astype),
             n_estimators=n_estimators,
             estimator_params=("criterion", "max_depth", "min_samples_split",
                               "min_samples_leaf", "min_weight_fraction_leaf",
@@ -2079,6 +2090,7 @@ class ExtraTreesRegressor(ForestRegressor):
         self.min_impurity_decrease = min_impurity_decrease
         self.min_impurity_split = min_impurity_split
         self.ccp_alpha = ccp_alpha
+        self.store_tree_astype = store_tree_astype
 
 
 class RandomTreesEmbedding(BaseForest):

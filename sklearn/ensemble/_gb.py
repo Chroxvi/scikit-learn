@@ -141,7 +141,7 @@ class BaseGradientBoosting(BaseEnsemble, metaclass=ABCMeta):
                  init, subsample, max_features, ccp_alpha,
                  random_state, alpha=0.9, verbose=0, max_leaf_nodes=None,
                  warm_start=False, validation_fraction=0.1,
-                 n_iter_no_change=None, tol=1e-4):
+                 n_iter_no_change=None, tol=1e-4, store_tree_astype=None):
 
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
@@ -165,6 +165,7 @@ class BaseGradientBoosting(BaseEnsemble, metaclass=ABCMeta):
         self.validation_fraction = validation_fraction
         self.n_iter_no_change = n_iter_no_change
         self.tol = tol
+        self.store_tree_astype = store_tree_astype
 
     @abstractmethod
     def _validate_y(self, y, sample_weight=None):
@@ -204,7 +205,8 @@ class BaseGradientBoosting(BaseEnsemble, metaclass=ABCMeta):
                 max_features=self.max_features,
                 max_leaf_nodes=self.max_leaf_nodes,
                 random_state=random_state,
-                ccp_alpha=self.ccp_alpha)
+                ccp_alpha=self.ccp_alpha,
+                store_tree_astype=self.store_tree_astype)
 
             if self.subsample < 1.0:
                 # no inplace multiplication!
@@ -1081,7 +1083,7 @@ shape (n_estimators, ``loss_.K``)
                  random_state=None, max_features=None, verbose=0,
                  max_leaf_nodes=None, warm_start=False,
                  validation_fraction=0.1, n_iter_no_change=None, tol=1e-4,
-                 ccp_alpha=0.0):
+                 ccp_alpha=0.0, store_tree_astype=None):
 
         super().__init__(
             loss=loss, learning_rate=learning_rate, n_estimators=n_estimators,
@@ -1095,7 +1097,8 @@ shape (n_estimators, ``loss_.K``)
             min_impurity_decrease=min_impurity_decrease,
             min_impurity_split=min_impurity_split,
             warm_start=warm_start, validation_fraction=validation_fraction,
-            n_iter_no_change=n_iter_no_change, tol=tol, ccp_alpha=ccp_alpha)
+            n_iter_no_change=n_iter_no_change, tol=tol, ccp_alpha=ccp_alpha,
+            store_tree_astype=store_tree_astype)
 
     def _validate_y(self, y, sample_weight):
         check_classification_targets(y)
@@ -1601,7 +1604,8 @@ class GradientBoostingRegressor(RegressorMixin, BaseGradientBoosting):
                  min_impurity_split=None, init=None, random_state=None,
                  max_features=None, alpha=0.9, verbose=0, max_leaf_nodes=None,
                  warm_start=False, validation_fraction=0.1,
-                 n_iter_no_change=None, tol=1e-4, ccp_alpha=0.0):
+                 n_iter_no_change=None, tol=1e-4, ccp_alpha=0.0,
+                 store_tree_astype=None):
 
         super().__init__(
             loss=loss, learning_rate=learning_rate, n_estimators=n_estimators,
@@ -1615,7 +1619,8 @@ class GradientBoostingRegressor(RegressorMixin, BaseGradientBoosting):
             random_state=random_state, alpha=alpha, verbose=verbose,
             max_leaf_nodes=max_leaf_nodes, warm_start=warm_start,
             validation_fraction=validation_fraction,
-            n_iter_no_change=n_iter_no_change, tol=tol, ccp_alpha=ccp_alpha)
+            n_iter_no_change=n_iter_no_change, tol=tol, ccp_alpha=ccp_alpha,
+            store_tree_astype=store_tree_astype)
 
     def _validate_y(self, y, sample_weight=None):
         if y.dtype.kind == 'O':
