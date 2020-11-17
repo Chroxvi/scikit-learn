@@ -633,54 +633,55 @@ cdef class Tree:
         """Getstate re-implementation, for pickling."""
         d = {}
         # capacity is inferred during the __setstate__ using nodes
-        d["max_depth"] = self.max_depth
-        d["node_count"] = self.node_count
-        d["nodes"] = self._get_node_ndarray()
-        d["values"] = self._get_value_ndarray()
+        d['max_depth'] = self.max_depth
+        d['node_count'] = self.node_count
+        d['value_ndarray'] = self.value_ndarray
+        d['nodes'] = self._get_node_ndarray()
+        d['values'] = self._get_value_ndarray()
         return d
 
     def __setstate__(self, d):
         """Setstate re-implementation, for unpickling."""
-        self.max_depth = d["max_depth"]
-        self.node_count = d["node_count"]
-
-        # Load nodes
+        self.max_depth = d['max_depth']
+        self.node_count = d['node_count']
+        self.value_ndarray = d['value_ndarray']
+        owns_value = d['value_ndarray'] is None
+        pickled_values = d['values']
         if 'nodes' not in d:
             raise ValueError('You have loaded Tree version which '
                              'cannot be imported')
+        pickled_nodes = d['nodes']
 
-        node_ndarray = d['nodes']
-        value_ndarray = d['values']
-
-        if (node_ndarray.dtype != NODE_DTYPE):
+        # Load nodes
+        if (pickled_nodes.dtype != NODE_DTYPE):
             # possible mismatch of big/little endian due to serialization
             # on a different architecture. Try swapping the byte order.
-            node_ndarray = node_ndarray.byteswap().newbyteorder()
-            if (node_ndarray.dtype != NODE_DTYPE):
-                raise ValueError('Did not recognise loaded array dtype')
+            pickled_nodes = pickled_nodes.byteswap().newbyteorder()
+            if (pickled_nodes.dtype != NODE_DTYPE):
+                raise ValueError('Did not recognise loaded node array dtype')
 
-        if (node_ndarray.ndim != 1 or
-            not node_ndarray.flags.c_contiguous):
+        if (pickled_nodes.ndim != 1 or
+            not pickled_nodes.flags.c_contiguous):
             raise ValueError('Did not recognise loaded node array layout')
 
-        self.capacity = node_ndarray.shape[0]
-        if self._resize_c(self.capacity, self.value_ndarray==None) != 0:
-            raise MemoryError("resizing tree to %d" % self.capacity)
+        self.capacity = pickled_nodes.shape[0]
+        if self._resize_c(self.capacity, owns_value) != 0:
+            raise MemoryError("Resizing tree to %d" % self.capacity)
 
-        nodes = memcpy(self.nodes, (<np.ndarray> node_ndarray).data,
+        nodes = memcpy(self.nodes, (<np.ndarray> pickled_nodes).data,
                        self.capacity * sizeof(Node))
 
         # Load values
-        if self.value_ndarray == None:
-            value_shape = (node_ndarray.shape[0], self.n_outputs,
+        if owns_value:
+            value_shape = (pickled_nodes.shape[0], self.n_outputs,
                            self.max_n_classes)
 
-            if (value_ndarray.shape != value_shape or
-                not value_ndarray.flags.c_contiguous or
-                value_ndarray.dtype != np.float64):
+            if (pickled_values.shape != value_shape or
+                not pickled_values.flags.c_contiguous or
+                pickled_values.dtype != np.float64):
                 raise ValueError('Did not recognise loaded value array layout')
 
-            value = memcpy(self.value, (<np.ndarray> value_ndarray).data,
+            value = memcpy(self.value, (<np.ndarray> pickled_values).data,
                         self.capacity * self.value_stride * sizeof(double))
 
     cdef int _resize(self, SIZE_t capacity) nogil except -1:

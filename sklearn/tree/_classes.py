@@ -929,7 +929,7 @@ class DecisionTreeClassifier(ClassifierMixin, BaseDecisionTree):
         """
         check_is_fitted(self)
         X = self._validate_X_predict(X, check_input)
-        proba = self.tree_.predict(X)
+        proba = self.tree_.predict(X).astype(np.float64, copy=False)
 
         if self.n_outputs_ == 1:
             proba = proba[:, :self.n_classes_]
