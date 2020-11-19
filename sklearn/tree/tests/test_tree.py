@@ -70,6 +70,9 @@ ALL_TREES.update(REG_TREES)
 SPARSE_TREES = ["DecisionTreeClassifier", "DecisionTreeRegressor",
                 "ExtraTreeClassifier", "ExtraTreeRegressor"]
 
+REG_TREE_VALUE_DTYPES = [None, np.float64, np.float32, np.float16]
+CLF_TREE_VALUE_DTYPES = REG_TREE_VALUE_DTYPES + [
+    np.uint64, np.uint32, np.uint16, np.uint8]
 
 X_small = np.array([
     [0, 0, 4, 0, 0, 0, 1, -14, 0, -4, 0, 0, 0, 0, ],
@@ -186,10 +189,11 @@ def assert_tree_equal(d, s, message):
                               err_msg=message + ": inequal value")
 
 
-def test_classification_toy():
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_classification_toy(tree_value_dtype):
     # Check classification on a toy dataset.
     for name, Tree in CLF_TREES.items():
-        clf = Tree(random_state=0)
+        clf = Tree(random_state=0, store_tree_astype=tree_value_dtype)
         clf.fit(X, y)
         assert_array_equal(clf.predict(T), true_result,
                            "Failed with {0}".format(name))
@@ -216,7 +220,8 @@ def test_weighted_classification_toy():
 
 @pytest.mark.parametrize("Tree", REG_TREES.values())
 @pytest.mark.parametrize("criterion", REG_CRITERIONS)
-def test_regression_toy(Tree, criterion):
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_regression_toy(Tree, criterion, tree_value_dtype):
     # Check regression on a toy dataset.
     if criterion == "poisson":
         # make target positive while not touching the original y and
@@ -228,13 +233,17 @@ def test_regression_toy(Tree, criterion):
         y_train = y
         y_test = true_result
 
-    reg = Tree(criterion=criterion, random_state=1)
+    reg = Tree(criterion=criterion, random_state=1,
+               store_tree_astype=tree_value_dtype)
     reg.fit(X, y_train)
     assert_allclose(reg.predict(T), y_test)
+    assert reg.predict(T).dtype == np.float64
 
-    clf = Tree(criterion=criterion, max_features=1, random_state=1)
-    clf.fit(X, y_train)
+    reg = Tree(criterion=criterion, max_features=1, random_state=1,
+               store_tree_astype=tree_value_dtype)
+    reg.fit(X, y_train)
     assert_allclose(reg.predict(T), y_test)
+    assert reg.predict(T).dtype == np.float64
 
 
 def test_xor():
@@ -278,10 +287,12 @@ def test_iris():
 
 @pytest.mark.parametrize("name, Tree", REG_TREES.items())
 @pytest.mark.parametrize("criterion", REG_CRITERIONS)
-def test_diabetes_overfit(name, Tree, criterion):
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_diabetes_overfit(name, Tree, criterion, tree_value_dtype):
     # check consistency of overfitted trees on the diabetes dataset
     # since the trees will overfit, we expect an MSE of 0
-    reg = Tree(criterion=criterion, random_state=0)
+    reg = Tree(criterion=criterion, random_state=0,
+               store_tree_astype=tree_value_dtype)
     reg.fit(diabetes.data, diabetes.target)
     score = mean_squared_error(diabetes.target, reg.predict(diabetes.data))
     assert score == pytest.approx(0), (
@@ -298,24 +309,28 @@ def test_diabetes_overfit(name, Tree, criterion):
      ("friedman_mse", 15, mean_squared_error, 60),
      ("poisson", 15, mean_poisson_deviance, 30)]
 )
-def test_diabetes_underfit(name, Tree, criterion, max_depth, metric, max_loss):
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_diabetes_underfit(
+    name, Tree, criterion, max_depth, metric, max_loss, tree_value_dtype):
     # check consistency of trees when the depth and the number of features are
     # limited
 
     reg = Tree(
         criterion=criterion, max_depth=max_depth,
-        max_features=6, random_state=0
+        max_features=6, random_state=0, store_tree_astype=tree_value_dtype
     )
     reg.fit(diabetes.data, diabetes.target)
     loss = metric(diabetes.target, reg.predict(diabetes.data))
     assert 0 < loss < max_loss
 
 
-def test_probability():
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_probability(tree_value_dtype):
     # Predict probabilities using DecisionTreeClassifier.
 
     for name, Tree in CLF_TREES.items():
-        clf = Tree(max_depth=1, max_features=1, random_state=42)
+        clf = Tree(max_depth=1, max_features=1, random_state=42,
+                   store_tree_astype=tree_value_dtype)
         clf.fit(iris.data, iris.target)
 
         prob_predict = clf.predict_proba(iris.data)
@@ -328,6 +343,7 @@ def test_probability():
         assert_almost_equal(clf.predict_proba(iris.data),
                             np.exp(clf.predict_log_proba(iris.data)), 8,
                             err_msg="Failed with {0}".format(name))
+        assert prob_predict.dtype == np.float64
 
 
 def test_arrayrepr():
@@ -382,7 +398,8 @@ def test_numerical_stability():
             reg.fit(-X, -y)
 
 
-def test_importances():
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_importances(tree_value_dtype):
     # Check variable importances.
     X, y = datasets.make_classification(n_samples=5000,
                                         n_features=10,
@@ -393,7 +410,7 @@ def test_importances():
                                         random_state=0)
 
     for name, Tree in CLF_TREES.items():
-        clf = Tree(random_state=0)
+        clf = Tree(random_state=0, store_tree_astype=tree_value_dtype)
 
         clf.fit(X, y)
         importances = clf.feature_importances_
@@ -403,10 +420,12 @@ def test_importances():
         assert n_important == 3, "Failed with {0}".format(name)
 
     # Check on iris that importances are the same for all builders
-    clf = DecisionTreeClassifier(random_state=0)
+    clf = DecisionTreeClassifier(random_state=0,
+                                 store_tree_astype=tree_value_dtype)
     clf.fit(iris.data, iris.target)
     clf2 = DecisionTreeClassifier(random_state=0,
-                                  max_leaf_nodes=len(iris.data))
+                                  max_leaf_nodes=len(iris.data),
+                                  store_tree_astype=tree_value_dtype)
     clf2.fit(iris.data, iris.target)
 
     assert_array_equal(clf.feature_importances_,
@@ -963,7 +982,8 @@ def test_min_impurity_decrease():
                         "pickling with {1}".format(attribute, name))
 
 
-def test_multioutput():
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_multioutput(tree_value_dtype):
     # Check estimators on multi-output problems.
     X = [[-2, -1],
          [-1, -1],
@@ -996,7 +1016,8 @@ def test_multioutput():
 
     # toy classification problem
     for name, TreeClassifier in CLF_TREES.items():
-        clf = TreeClassifier(random_state=0)
+        clf = TreeClassifier(random_state=0,
+                             store_tree_astype=tree_value_dtype)
         y_hat = clf.fit(X, y).predict(T)
         assert_array_equal(y_hat, y_true)
         assert y_hat.shape == (4, 2)
@@ -1005,18 +1026,25 @@ def test_multioutput():
         assert len(proba) == 2
         assert proba[0].shape == (4, 2)
         assert proba[1].shape == (4, 4)
+        assert proba[0].dtype == np.float64
+        assert proba[1].dtype == np.float64
 
         log_proba = clf.predict_log_proba(T)
         assert len(log_proba) == 2
         assert log_proba[0].shape == (4, 2)
         assert log_proba[1].shape == (4, 4)
+        assert log_proba[0].dtype == np.float64
+        assert log_proba[1].dtype == np.float64
 
     # toy regression problem
-    for name, TreeRegressor in REG_TREES.items():
-        reg = TreeRegressor(random_state=0)
-        y_hat = reg.fit(X, y).predict(T)
-        assert_almost_equal(y_hat, y_true)
-        assert y_hat.shape == (4, 2)
+    if tree_value_dtype in REG_TREE_VALUE_DTYPES:
+        for name, TreeRegressor in REG_TREES.items():
+            reg = TreeRegressor(random_state=0,
+                                store_tree_astype=tree_value_dtype)
+            y_hat = reg.fit(X, y).predict(T)
+            assert_almost_equal(y_hat, y_true)
+            assert y_hat.shape == (4, 2)
+            assert y_hat.dtype == np.float64
 
 
 def test_classes_shape():
@@ -1050,12 +1078,12 @@ def test_unbalanced_iris():
         clf.fit(unbalanced_X, unbalanced_y, sample_weight=sample_weight)
         assert_almost_equal(clf.predict(unbalanced_X), unbalanced_y)
 
-
-def test_memory_layout():
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_memory_layout(tree_value_dtype):
     # Check that it works no matter the memory layout
     for (name, TreeEstimator), dtype in product(ALL_TREES.items(),
                                                 [np.float64, np.float32]):
-        est = TreeEstimator(random_state=0)
+        est = TreeEstimator(random_state=0, store_tree_astype=tree_value_dtype)
 
         # Nothing
         X = np.asarray(iris.data, dtype=dtype)
@@ -1357,7 +1385,7 @@ def test_huge_allocations():
         clf.fit(X, y)
 
 
-def check_sparse_input(tree, dataset, max_depth=None):
+def check_sparse_input(tree, dataset, tree_value_dtype, max_depth=None):
     TreeEstimator = ALL_TREES[tree]
     X = DATASETS[dataset]["X"]
     X_sparse = DATASETS[dataset]["X_sparse"]
@@ -1374,8 +1402,12 @@ def check_sparse_input(tree, dataset, max_depth=None):
         X_sparse = sparse_format(X_sparse)
 
         # Check the default (depth first search)
-        d = TreeEstimator(random_state=0, max_depth=max_depth).fit(X, y)
-        s = TreeEstimator(random_state=0, max_depth=max_depth).fit(X_sparse, y)
+        d = TreeEstimator(
+            random_state=0, max_depth=max_depth,
+            store_tree_astype=tree_value_dtype).fit(X, y)
+        s = TreeEstimator(
+            random_state=0, max_depth=max_depth,
+            store_tree_astype=tree_value_dtype).fit(X_sparse, y)
 
         assert_tree_equal(d.tree_, s.tree_,
                           "{0} with dense and sparse format gave different "
@@ -1405,18 +1437,20 @@ def check_sparse_input(tree, dataset, max_depth=None):
          "sparse-pos", "sparse-neg", "sparse-mix",
          "zeros")
 )
-def test_sparse_input(tree_type, dataset):
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_sparse_input(tree_type, dataset, tree_value_dtype):
     max_depth = 3 if dataset == "digits" else None
-    check_sparse_input(tree_type, dataset, max_depth)
+    check_sparse_input(tree_type, dataset, tree_value_dtype, max_depth)
 
 
 @pytest.mark.parametrize("tree_type",
                          sorted(set(SPARSE_TREES).intersection(REG_TREES)))
 @pytest.mark.parametrize("dataset", ["diabetes", "reg_small"])
-def test_sparse_input_reg_trees(tree_type, dataset):
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_sparse_input_reg_trees(tree_type, dataset, tree_value_dtype):
     # Due to numerical instability of MSE and too strict test, we limit the
     # maximal depth
-    check_sparse_input(tree_type, dataset, 2)
+    check_sparse_input(tree_type, dataset, tree_value_dtype, 2)
 
 
 def check_sparse_parameters(tree, dataset):
@@ -1616,32 +1650,34 @@ def test_min_weight_leaf_split_level(name):
     check_min_weight_leaf_split_level(name)
 
 
-def check_public_apply(name):
+def check_public_apply(name, tree_value_dtype):
     X_small32 = X_small.astype(tree._tree.DTYPE, copy=False)
 
-    est = ALL_TREES[name]()
+    est = ALL_TREES[name](store_tree_astype=tree_value_dtype)
     est.fit(X_small, y_small)
     assert_array_equal(est.apply(X_small),
                        est.tree_.apply(X_small32))
 
 
-def check_public_apply_sparse(name):
+def check_public_apply_sparse(name, tree_value_dtype):
     X_small32 = csr_matrix(X_small.astype(tree._tree.DTYPE, copy=False))
 
-    est = ALL_TREES[name]()
+    est = ALL_TREES[name](store_tree_astype=tree_value_dtype)
     est.fit(X_small, y_small)
     assert_array_equal(est.apply(X_small),
                        est.tree_.apply(X_small32))
 
 
 @pytest.mark.parametrize("name", ALL_TREES)
-def test_public_apply_all_trees(name):
-    check_public_apply(name)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_public_apply_all_trees(name, tree_value_dtype):
+    check_public_apply(name, tree_value_dtype)
 
 
 @pytest.mark.parametrize("name", SPARSE_TREES)
-def test_public_apply_sparse_trees(name):
-    check_public_apply_sparse(name)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_public_apply_sparse_trees(name, tree_value_dtype):
+    check_public_apply_sparse(name, tree_value_dtype)
 
 
 def test_decision_path_hardcoded():
@@ -1652,13 +1688,14 @@ def test_decision_path_hardcoded():
     assert_array_equal(node_indicator, [[1, 1, 0], [1, 0, 1]])
 
 
-def check_decision_path(name):
+def check_decision_path(name, tree_value_dtype):
     X = iris.data
     y = iris.target
     n_samples = X.shape[0]
 
     TreeEstimator = ALL_TREES[name]
-    est = TreeEstimator(random_state=0, max_depth=2)
+    est = TreeEstimator(random_state=0, max_depth=2,
+                        store_tree_astype=tree_value_dtype)
     est.fit(X, y)
 
     node_indicator_csr = est.decision_path(X)
@@ -1681,8 +1718,9 @@ def check_decision_path(name):
 
 
 @pytest.mark.parametrize("name", ALL_TREES)
-def test_decision_path(name):
-    check_decision_path(name)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_decision_path(name, tree_value_dtype):
+    check_decision_path(name, tree_value_dtype)
 
 
 def check_no_sparse_y_support(name):
@@ -2114,3 +2152,49 @@ def test_X_idx_sorted_deprecated(TreeEstimator):
     with pytest.warns(FutureWarning,
                       match="The parameter 'X_idx_sorted' is deprecated"):
         tree.fit(X, y, X_idx_sorted=X_idx_sorted)
+
+
+def check_convert_tree_value_to_ndarray(Tree, tree_value_dtype):
+    tree = Tree(random_state=0, store_tree_astype=tree_value_dtype)
+    tree.fit(X, y)
+
+    if tree_value_dtype is None:
+        # Tree owns the value array memory
+        # The .value property returns a view on the underlying array
+        # Thus, we need to access the .base to test data ownership
+        assert not tree.tree_.value.base.flags.owndata
+    else:
+        # Tree value array has be copied to separate NumPy array
+        assert tree.tree_.value.dtype == tree_value_dtype
+        assert tree.tree_.value.base.flags.owndata
+
+
+@pytest.mark.parametrize('name, Tree', CLF_TREES.items())
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_convert_tree_value_to_ndarray_clf(name, Tree, tree_value_dtype):
+    check_convert_tree_value_to_ndarray(Tree, tree_value_dtype)
+
+
+@pytest.mark.parametrize('name, Tree', REG_TREES.items())
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_convert_tree_value_to_ndarray_reg(name, Tree, tree_value_dtype):
+    check_convert_tree_value_to_ndarray(Tree, tree_value_dtype)
+
+
+@pytest.mark.parametrize('name, Tree', ALL_TREES.items())
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_pickle(name, Tree, tree_value_dtype):
+    tree = tree = Tree(random_state=0, store_tree_astype=tree_value_dtype)
+    tree.fit(X, y)
+    score = tree.score(X, y)
+    pickle_object = pickle.dumps(tree)
+
+    tree2 = pickle.loads(pickle_object)
+    assert type(tree2) == tree.__class__
+    assert tree.tree_.value.dtype == tree2.tree_.value.dtype
+    # The .value property returns a view on the underlying array
+    # Thus, we need to access the .base to test data ownership
+    assert (tree.tree_.value.base.flags.owndata ==
+            tree2.tree_.value.base.flags.owndata)
+    score2 = tree2.score(X, y)
+    assert score == score2
