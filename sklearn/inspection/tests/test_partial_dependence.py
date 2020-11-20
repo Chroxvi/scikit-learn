@@ -297,6 +297,7 @@ def test_recursion_decision_tree_vs_forest_and_gbdt(seed):
 
 @pytest.mark.parametrize('est', (
     GradientBoostingClassifier(random_state=0),
+    GradientBoostingClassifier(random_state=0, store_tree_astype=np.float32),
     HistGradientBoostingClassifier(random_state=0),
 ))
 @pytest.mark.parametrize('target_feature', (0, 1, 2, 3, 4, 5))
@@ -326,9 +327,11 @@ def test_recursion_decision_function(est, target_feature):
 @pytest.mark.parametrize('est', (
     LinearRegression(),
     GradientBoostingRegressor(random_state=0),
+    GradientBoostingRegressor(random_state=0, store_tree_astype=np.float32),
     HistGradientBoostingRegressor(random_state=0, min_samples_leaf=1,
                                   max_leaf_nodes=None, max_iter=1),
     DecisionTreeRegressor(random_state=0),
+    DecisionTreeRegressor(random_state=0, store_tree_astype=np.float32)
 ))
 @pytest.mark.parametrize('power', (1, 2))
 def test_partial_dependence_easy_target(est, power):
