@@ -548,6 +548,11 @@ def test_error():
         with pytest.raises(ValueError):
             est.predict_proba(X2)
 
+        # store_tree_astype must be floating when using weights
+        with pytest.raises(ValueError):
+            TreeEstimator(store_tree_astype=np.int32).fit(
+                X, y, sample_weight=np.ones_like(y))
+
     for name, TreeEstimator in ALL_TREES.items():
         with pytest.raises(ValueError):
             TreeEstimator(min_samples_leaf=-1).fit(X, y)
@@ -624,6 +629,19 @@ def test_error():
         est = TreeEstimator()
         with pytest.raises(NotFittedError):
             est.apply(T)
+
+        # invalid types for store_tree_astype
+        with pytest.raises(TypeError):
+            TreeEstimator(store_tree_astype='failure').fit(X, y)
+        with pytest.raises(ValueError):
+            TreeEstimator(store_tree_astype='bool').fit(X, y)
+        with pytest.raises(ValueError):
+            TreeEstimator(store_tree_astype=np.bool_).fit(X, y)
+
+    for name, TreeEstimator in REG_TREES.items():
+        # integer types for store_tree_astype with regressor
+        with pytest.raises(ValueError):
+            TreeEstimator(store_tree_astype=np.int32).fit(X, y)
 
     # non positive target for Poisson splitting Criterion
     est = DecisionTreeRegressor(criterion="poisson")
