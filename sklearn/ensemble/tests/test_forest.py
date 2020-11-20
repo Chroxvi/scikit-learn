@@ -106,17 +106,23 @@ FOREST_ESTIMATORS.update(FOREST_TRANSFORMERS)
 FOREST_CLASSIFIERS_REGRESSORS: Dict[str, Any] = FOREST_CLASSIFIERS.copy()
 FOREST_CLASSIFIERS_REGRESSORS.update(FOREST_REGRESSORS)
 
+REG_TREE_VALUE_DTYPES = [None, np.float64, np.float32, np.float16]
+CLF_TREE_VALUE_DTYPES = REG_TREE_VALUE_DTYPES + [
+    np.uint64, np.uint32, np.uint16, np.uint8]
 
-def check_classification_toy(name):
+
+def check_classification_toy(name, tree_value_dtype):
     """Check classification on a toy dataset."""
     ForestClassifier = FOREST_CLASSIFIERS[name]
 
-    clf = ForestClassifier(n_estimators=10, random_state=1)
+    clf = ForestClassifier(n_estimators=10, random_state=1,
+                           store_tree_astype=tree_value_dtype)
     clf.fit(X, y)
     assert_array_equal(clf.predict(T), true_result)
     assert 10 == len(clf)
 
-    clf = ForestClassifier(n_estimators=10, max_features=1, random_state=1)
+    clf = ForestClassifier(n_estimators=10, max_features=1, random_state=1,
+                           store_tree_astype=tree_value_dtype)
     clf.fit(X, y)
     assert_array_equal(clf.predict(T), true_result)
     assert 10 == len(clf)
@@ -127,8 +133,9 @@ def check_classification_toy(name):
 
 
 @pytest.mark.parametrize('name', FOREST_CLASSIFIERS)
-def test_classification_toy(name):
-    check_classification_toy(name)
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_classification_toy(name, tree_value_dtype):
+    check_classification_toy(name, tree_value_dtype)
 
 
 def check_iris_criterion(name, criterion):
@@ -156,19 +163,20 @@ def test_iris(name, criterion):
     check_iris_criterion(name, criterion)
 
 
-def check_regression_criterion(name, criterion):
+def check_regression_criterion(name, criterion, tree_value_dtype):
     # Check consistency on regression dataset.
     ForestRegressor = FOREST_REGRESSORS[name]
 
     reg = ForestRegressor(n_estimators=5, criterion=criterion,
-                          random_state=1)
+                          random_state=1, store_tree_astype=tree_value_dtype)
     reg.fit(X_reg, y_reg)
     score = reg.score(X_reg, y_reg)
     assert score > 0.93, ("Failed with max_features=None, criterion %s "
                           "and score = %f" % (criterion, score))
 
     reg = ForestRegressor(n_estimators=5, criterion=criterion,
-                          max_features=6, random_state=1)
+                          max_features=6, random_state=1,
+                          store_tree_astype=tree_value_dtype)
     reg.fit(X_reg, y_reg)
     score = reg.score(X_reg, y_reg)
     assert score > 0.92, ("Failed with max_features=6, criterion %s "
@@ -177,8 +185,9 @@ def check_regression_criterion(name, criterion):
 
 @pytest.mark.parametrize('name', FOREST_REGRESSORS)
 @pytest.mark.parametrize('criterion', ("mse", "mae", "friedman_mse"))
-def test_regression(name, criterion):
-    check_regression_criterion(name, criterion)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_regression(name, criterion, tree_value_dtype):
+    check_regression_criterion(name, criterion, tree_value_dtype)
 
 
 def check_regressor_attributes(name):
@@ -371,13 +380,14 @@ def test_unfitted_feature_importances(name):
         getattr(FOREST_ESTIMATORS[name](), 'feature_importances_')
 
 
-def check_oob_score(name, X, y, n_estimators=20):
+def check_oob_score(name, X, y, n_estimators=20, tree_value_dtype=None):
     # Check that oob prediction is a good estimation of the generalization
     # error.
 
     # Proper behavior
     est = FOREST_ESTIMATORS[name](oob_score=True, random_state=0,
-                                  n_estimators=n_estimators, bootstrap=True)
+                                  n_estimators=n_estimators, bootstrap=True,
+                                  store_tree_astype=tree_value_dtype)
     n_samples = X.shape[0]
     est.fit(X[:n_samples // 2, :], y[:n_samples // 2])
     test_score = est.score(X[n_samples // 2:, :], y[n_samples // 2:])
@@ -388,27 +398,34 @@ def check_oob_score(name, X, y, n_estimators=20):
     # Check warning if not enough estimators
     with np.errstate(divide="ignore", invalid="ignore"):
         est = FOREST_ESTIMATORS[name](oob_score=True, random_state=0,
-                                      n_estimators=1, bootstrap=True)
+                                      n_estimators=1, bootstrap=True,
+                                      store_tree_astype=tree_value_dtype)
         assert_warns(UserWarning, est.fit, X, y)
 
 
 @pytest.mark.parametrize('name', FOREST_CLASSIFIERS)
-def test_oob_score_classifiers(name):
-    check_oob_score(name, iris.data, iris.target)
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_oob_score_classifiers(name, tree_value_dtype):
+    check_oob_score(name, iris.data, iris.target,
+                    tree_value_dtype=tree_value_dtype)
 
     # csc matrix
-    check_oob_score(name, csc_matrix(iris.data), iris.target)
+    check_oob_score(name, csc_matrix(iris.data), iris.target,
+                    tree_value_dtype=tree_value_dtype)
 
     # non-contiguous targets in classification
-    check_oob_score(name, iris.data, iris.target * 2 + 1)
+    check_oob_score(name, iris.data, iris.target * 2 + 1,
+                    tree_value_dtype=tree_value_dtype)
 
 
 @pytest.mark.parametrize('name', FOREST_REGRESSORS)
-def test_oob_score_regressors(name):
-    check_oob_score(name, X_reg, y_reg, 50)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
+def test_oob_score_regressors(name, tree_value_dtype):
+    check_oob_score(name, X_reg, y_reg, 50, tree_value_dtype=tree_value_dtype)
 
     # csc matrix
-    check_oob_score(name, csc_matrix(X_reg), y_reg, 50)
+    check_oob_score(name, csc_matrix(X_reg), y_reg, 50,
+                    tree_value_dtype=tree_value_dtype)
 
 
 def check_oob_score_raise_error(name):
@@ -451,10 +468,11 @@ def test_gridsearch(name):
     check_gridsearch(name)
 
 
-def check_parallel(name, X, y):
+def check_parallel(name, X, y, tree_value_dtype):
     """Check parallel computations in classification"""
     ForestEstimator = FOREST_ESTIMATORS[name]
-    forest = ForestEstimator(n_estimators=10, n_jobs=3, random_state=0)
+    forest = ForestEstimator(n_estimators=10, n_jobs=3, random_state=0,
+                             store_tree_astype=tree_value_dtype)
 
     forest.fit(X, y)
     assert len(forest) == 10
@@ -467,7 +485,8 @@ def check_parallel(name, X, y):
 
 
 @pytest.mark.parametrize('name', FOREST_CLASSIFIERS_REGRESSORS)
-def test_parallel(name):
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_parallel(name, tree_value_dtype):
     if name in FOREST_CLASSIFIERS:
         X = iris.data
         y = iris.target
@@ -475,7 +494,7 @@ def test_parallel(name):
         X = X_reg
         y = y_reg
 
-    check_parallel(name, X, y)
+    check_parallel(name, X, y, tree_value_dtype)
 
 
 def check_pickle(name, X, y):
@@ -1059,7 +1078,7 @@ def test_class_weight_errors(name):
     check_class_weight_errors(name)
 
 
-def check_warm_start(name, random_state=42):
+def check_warm_start(name, tree_value_dtype, random_state=42):
     # Test if fitting incrementally with warm start gives a forest of the
     # right size and the same results as a normal fit.
     X, y = hastie_X, hastie_y
@@ -1069,7 +1088,8 @@ def check_warm_start(name, random_state=42):
         if est_ws is None:
             est_ws = ForestEstimator(n_estimators=n_estimators,
                                      random_state=random_state,
-                                     warm_start=True)
+                                     warm_start=True,
+                                     store_tree_astype=tree_value_dtype)
         else:
             est_ws.set_params(n_estimators=n_estimators)
         est_ws.fit(X, y)
@@ -1086,12 +1106,15 @@ def check_warm_start(name, random_state=42):
                        err_msg="Failed with {0}".format(name))
 
 
-@pytest.mark.parametrize('name', FOREST_ESTIMATORS)
-def test_warm_start(name):
-    check_warm_start(name)
+@pytest.mark.parametrize('name, tree_value_dtype', [
+    *product(FOREST_CLASSIFIERS, CLF_TREE_VALUE_DTYPES),
+    *product(FOREST_REGRESSORS, REG_TREE_VALUE_DTYPES),
+    *product(FOREST_REGRESSORS, [None])])
+def test_warm_start(name, tree_value_dtype):
+    check_warm_start(name, tree_value_dtype)
 
 
-def check_warm_start_clear(name):
+def check_warm_start_clear(name, tree_value_dtype):
     # Test if fit clears state and grows a new forest when warm_start==False.
     X, y = hastie_X, hastie_y
     ForestEstimator = FOREST_ESTIMATORS[name]
@@ -1100,7 +1123,7 @@ def check_warm_start_clear(name):
     est.fit(X, y)
 
     est_2 = ForestEstimator(n_estimators=5, max_depth=1, warm_start=True,
-                            random_state=2)
+                            random_state=2, store_tree_astype=tree_value_dtype)
     est_2.fit(X, y)  # inits state
     est_2.set_params(warm_start=False, random_state=1)
     est_2.fit(X, y)  # clears old state and equals est
@@ -1108,9 +1131,12 @@ def check_warm_start_clear(name):
     assert_array_almost_equal(est_2.apply(X), est.apply(X))
 
 
-@pytest.mark.parametrize('name', FOREST_ESTIMATORS)
-def test_warm_start_clear(name):
-    check_warm_start_clear(name)
+@pytest.mark.parametrize('name, tree_value_dtype', [
+    *product(FOREST_CLASSIFIERS, CLF_TREE_VALUE_DTYPES),
+    *product(FOREST_REGRESSORS, REG_TREE_VALUE_DTYPES),
+    *product(FOREST_REGRESSORS, [None])])
+def test_warm_start_clear(name, tree_value_dtype):
+    check_warm_start_clear(name, tree_value_dtype)
 
 
 def check_warm_start_smaller_n_estimators(name):
