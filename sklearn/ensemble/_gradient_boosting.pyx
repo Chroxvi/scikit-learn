@@ -200,8 +200,24 @@ def predict_stages(np.ndarray[object, ndim=2] estimators,
     cdef Py_ssize_t n_estimators = estimators.shape[0]
     cdef Py_ssize_t K = estimators.shape[1]
     cdef Tree tree
+    cdef bint value_converted_to_ndarray
 
-    if issparse(X):
+    # Determine if tree.value has been converted to ndarray
+    value_converted_to_ndarray = False
+    for i in range(n_estimators):
+        for k in range(K):
+            tree = estimators[i, k].tree_
+            if tree.value_ndarray is not None:
+                value_converted_to_ndarray = True
+
+    if value_converted_to_ndarray:
+        # The below fast tracks use tree.value and are, thus, not an option
+        # when it has been converteed to an ndarray
+        for i in range(n_estimators):
+            for k in range(K):
+                tree = estimators[i, k].tree_
+                out += scale * tree.predict(X).reshape((X.shape[0], 1))
+    elif issparse(X):
         if X.format != 'csr':
             raise ValueError("When X is a sparse matrix, a CSR format is"
                              " expected, got {!r}".format(type(X)))
