@@ -1,6 +1,7 @@
 """
 Testing for the gradient boosting module (sklearn.ensemble.gradient_boosting).
 """
+from sklearn.ensemble.tests.test_forest import CLF_TREE_VALUE_DTYPES
 import warnings
 import numpy as np
 
@@ -44,7 +45,9 @@ GRADIENT_BOOSTING_ESTIMATORS = [GradientBoostingClassifier,
                                 GradientBoostingRegressor]
 
 # Valid Tree internal value dtypes
-TREE_VALUE_DTYPES = [None, np.float64, np.float32, np.float16]
+REG_TREE_VALUE_DTYPES = [None, np.float64, np.float32, np.float16]
+CLF_TREE_VALUE_DTYPES = REG_TREE_VALUE_DTYPES + [
+    np.int64, np.int32, np.int16, np.int8]
 
 # toy sample
 X = [[-2, -1], [-1, -1], [-1, -2], [1, 1], [1, 2], [2, 1]]
@@ -68,7 +71,7 @@ iris.target = iris.target[perm]
 
 
 @pytest.mark.parametrize('loss', ('deviance', 'exponential'))
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
 def test_classification_toy(loss, tree_value_dtype):
     # Check classification on a toy dataset.
     clf = GradientBoostingClassifier(loss=loss, n_estimators=10,
@@ -154,7 +157,7 @@ def test_wrong_type_loss_function(GradientBoosting, loss):
 
 
 @pytest.mark.parametrize('loss', ('deviance', 'exponential'))
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
 def test_classification_synthetic(loss, tree_value_dtype):
     # Test GradientBoostingClassifier on synthetic dataset used by
     # Hastie et al. in ESLII Example 12.7.
@@ -234,7 +237,7 @@ def test_iris(subsample, sample_weight):
     assert leaves.shape == (150, 100, 3)
 
 
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_regression_synthetic(tree_value_dtype):
     # Test on synthetic regression datasets used in Leo Breiman,
     # `Bagging Predictors?. Machine Learning 24(2): 123-140 (1996).
@@ -290,7 +293,7 @@ def test_feature_importances(GradientBoosting, X, y):
     assert hasattr(gbdt, 'feature_importances_')
 
 
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
 def test_probability_log(tree_value_dtype):
     # Predict probabilities.
     clf = GradientBoostingClassifier(n_estimators=100, random_state=1,
@@ -539,7 +542,7 @@ def test_quantile_loss():
     assert_array_almost_equal(y_quantile, y_lad, decimal=4)
 
 
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
 def test_symbol_labels(tree_value_dtype):
     # Test with non-integer class labels.
     clf = GradientBoostingClassifier(n_estimators=100, random_state=1,
@@ -552,7 +555,7 @@ def test_symbol_labels(tree_value_dtype):
     assert 100 == len(clf.estimators_)
 
 
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
 def test_float_class_labels(tree_value_dtype):
     # Test with float class labels.
     clf = GradientBoostingClassifier(n_estimators=100, random_state=1,
@@ -630,10 +633,12 @@ def test_oob_improvement_raise():
     assert_raises(AttributeError, lambda: clf.oob_improvement_)
 
 
-def test_oob_multilcass_iris():
+@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+def test_oob_multilcass_iris(tree_value_dtype):
     # Check OOB improvement on multi-class dataset.
     clf = GradientBoostingClassifier(n_estimators=100, loss='deviance',
-                                     random_state=1, subsample=0.5)
+                                     random_state=1, subsample=0.5,
+                                     store_tree_astype=tree_value_dtype)
     clf.fit(iris.data, iris.target)
     score = clf.score(iris.data, iris.target)
     assert score > 0.9
@@ -697,7 +702,7 @@ def test_more_verbose_output():
 
 
 @pytest.mark.parametrize('Cls', GRADIENT_BOOSTING_ESTIMATORS)
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_warm_start(Cls, tree_value_dtype):
     # Test if warm start equals fit.
     X, y = datasets.make_hastie_10_2(n_samples=100, random_state=1)
@@ -724,7 +729,7 @@ def test_warm_start(Cls, tree_value_dtype):
 
 
 @pytest.mark.parametrize('Cls', GRADIENT_BOOSTING_ESTIMATORS)
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_warm_start_n_estimators(Cls, tree_value_dtype):
     # Test if warm start equals fit - set n_estimators.
     X, y = datasets.make_hastie_10_2(n_samples=100, random_state=1)
@@ -743,7 +748,7 @@ def test_warm_start_n_estimators(Cls, tree_value_dtype):
 
 
 @pytest.mark.parametrize('Cls', GRADIENT_BOOSTING_ESTIMATORS)
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_warm_start_max_depth(Cls, tree_value_dtype):
     # Test if possible to fit trees of different depth in ensemble.
     X, y = datasets.make_hastie_10_2(n_samples=100, random_state=1)
@@ -760,7 +765,7 @@ def test_warm_start_max_depth(Cls, tree_value_dtype):
 
 
 @pytest.mark.parametrize('Cls', GRADIENT_BOOSTING_ESTIMATORS)
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_warm_start_clear(Cls, tree_value_dtype):
     # Test if fit clears state.
     X, y = datasets.make_hastie_10_2(n_samples=100, random_state=1)
@@ -846,7 +851,7 @@ def test_warm_start_oob(Cls):
 
 
 @pytest.mark.parametrize('Cls', GRADIENT_BOOSTING_ESTIMATORS)
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_warm_start_sparse(Cls, tree_value_dtype):
     # Test that all sparse matrix types are supported
     X, y = datasets.make_hastie_10_2(n_samples=100, random_state=1)
@@ -880,7 +885,7 @@ def test_warm_start_sparse(Cls, tree_value_dtype):
 
 
 @pytest.mark.parametrize('Cls', GRADIENT_BOOSTING_ESTIMATORS)
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_warm_start_fortran(Cls, tree_value_dtype):
     # Test that feeding a X in Fortran-ordered is giving the same results as
     # in C-ordered
@@ -1126,7 +1131,7 @@ def test_non_uniform_weights_toy_edge_case_clf():
         (GradientBoostingClassifier, GradientBoostingRegressor)
 )
 @pytest.mark.parametrize('sparse_matrix', (csr_matrix, csc_matrix, coo_matrix))
-@pytest.mark.parametrize('tree_value_dtype', TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_sparse_input(EstimatorClass, sparse_matrix, tree_value_dtype):
     y, X = datasets.make_multilabel_classification(random_state=0,
                                                    n_samples=50,
