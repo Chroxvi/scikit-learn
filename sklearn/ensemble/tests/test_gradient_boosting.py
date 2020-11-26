@@ -1,7 +1,6 @@
 """
 Testing for the gradient boosting module (sklearn.ensemble.gradient_boosting).
 """
-from sklearn.ensemble.tests.test_forest import CLF_TREE_VALUE_DTYPES
 import warnings
 import numpy as np
 
@@ -1395,3 +1394,28 @@ def test_criterion_mae_deprecation(estimator):
            "will be removed in version 0.26.")
     with pytest.warns(FutureWarning, match=msg):
         estimator.fit(X, y)
+
+
+@pytest.mark.parametrize('Estimator', GRADIENT_BOOSTING_ESTIMATORS)
+def test_invalid_store_tree_astype(Estimator):
+    # store_tree_astype must be floating when using weights
+    with pytest.raises(ValueError):
+        Estimator(store_tree_astype=np.int32).fit(
+            X, y, sample_weight=np.ones_like(y))
+
+    # invalid types for store_tree_astype
+    with pytest.raises(TypeError):
+        Estimator(store_tree_astype='failure').fit(X, y)
+    with pytest.raises(ValueError):
+        Estimator(store_tree_astype='bool').fit(X, y)
+    with pytest.raises(ValueError):
+        Estimator(store_tree_astype=np.bool_).fit(X, y)
+
+    # no unsigned integer types for store_tree_astype
+    with pytest.raises(ValueError):
+        Estimator(store_tree_astype=np.uint32).fit(X, y)
+
+    # integer types for store_tree_astype with regressor
+    if Estimator == GradientBoostingRegressor:
+        with pytest.raises(ValueError):
+            Estimator(store_tree_astype=np.int32).fit(X, y)
