@@ -449,6 +449,15 @@ class BaseGradientBoosting(BaseEnsemble, metaclass=ABCMeta):
 
         self._check_params()
 
+        if self.store_tree_astype is not None:
+            self.store_tree_astype = np.dtype(self.store_tree_astype)
+            allowed_dtypes = [np.float64, np.float32, np.float16]
+            if self.store_tree_astype not in allowed_dtypes:
+                raise ValueError(
+                    "Invalid value of store_tree_astype: {}. ".format(
+                        self.store_tree_astype) +
+                    "Valid values are: {}".format(allowed_dtypes))
+
         if not self._is_initialized():
             # init state
             self._init_state()

@@ -549,10 +549,10 @@ def test_error():
         with pytest.raises(ValueError):
             est.predict_proba(X2)
 
-        # store_tree_astype must be floating when using weights
+        # store_tree_astype must be floating when using float weights
         with pytest.raises(ValueError):
             TreeEstimator(store_tree_astype=np.int32).fit(
-                X, y, sample_weight=np.ones_like(y))
+                X, y, sample_weight=np.ones_like(y) + 0.1)
 
     for name, TreeEstimator in ALL_TREES.items():
         with pytest.raises(ValueError):

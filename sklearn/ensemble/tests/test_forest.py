@@ -486,7 +486,7 @@ def check_parallel(name, X, y, tree_value_dtype):
 
 
 @pytest.mark.parametrize('name', FOREST_CLASSIFIERS_REGRESSORS)
-@pytest.mark.parametrize('tree_value_dtype', CLF_TREE_VALUE_DTYPES)
+@pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_parallel(name, tree_value_dtype):
     if name in FOREST_CLASSIFIERS:
         X = iris.data
