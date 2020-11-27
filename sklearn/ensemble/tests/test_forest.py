@@ -108,8 +108,7 @@ FOREST_CLASSIFIERS_REGRESSORS.update(FOREST_REGRESSORS)
 
 REG_TREE_VALUE_DTYPES = [None, np.float64, np.float32, np.float16]
 CLF_TREE_VALUE_DTYPES = REG_TREE_VALUE_DTYPES + [
-    np.uint64, np.uint32, np.uint16, np.uint8,
-    np.int64, np.int32, np.int16, np.int8]
+    np.uint64, np.uint32, np.uint16, np.uint8]
 
 
 def check_classification_toy(name, tree_value_dtype):

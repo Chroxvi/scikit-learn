@@ -72,8 +72,7 @@ SPARSE_TREES = ["DecisionTreeClassifier", "DecisionTreeRegressor",
 
 REG_TREE_VALUE_DTYPES = [None, np.float64, np.float32, np.float16]
 CLF_TREE_VALUE_DTYPES = REG_TREE_VALUE_DTYPES + [
-    np.uint64, np.uint32, np.uint16, np.uint8,
-    np.int64, np.int32, np.int16, np.int8]
+    np.uint64, np.uint32, np.uint16, np.uint8]
 
 X_small = np.array([
     [0, 0, 4, 0, 0, 0, 1, -14, 0, -4, 0, 0, 0, 0, ],

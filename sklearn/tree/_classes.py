@@ -338,8 +338,7 @@ class BaseDecisionTree(MultiOutputMixin, BaseEstimator, metaclass=ABCMeta):
                     # or integer sample_weight
                     np.all(np.mod(sample_weight, 1) == 0)):
                 allowed_dtypes.extend(
-                    [np.uint64, np.uint32, np.uint16, np.uint8,
-                     np.int64, np.int32, np.int16, np.int8])
+                    [np.uint64, np.uint32, np.uint16, np.uint8])
             if self.store_tree_astype not in allowed_dtypes:
                 raise ValueError(
                     "Invalid value of store_tree_astype: {}. ".format(
