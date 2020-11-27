@@ -334,9 +334,10 @@ class BaseDecisionTree(MultiOutputMixin, BaseEstimator, metaclass=ABCMeta):
             self.store_tree_astype = np.dtype(self.store_tree_astype)
             allowed_dtypes = [np.float64, np.float32, np.float16]
             if is_classification and (
-                    sample_weight is None or
-                    # or integer sample_weight
-                    np.all(np.mod(sample_weight, 1) == 0)):
+                    sample_weight is None or (
+                    # postive integer sample_weight
+                    np.all(np.mod(sample_weight, 1) == 0) and
+                    np.all(sample_weight >= 0))):
                 allowed_dtypes.extend(
                     [np.uint64, np.uint32, np.uint16, np.uint8])
             if self.store_tree_astype not in allowed_dtypes:

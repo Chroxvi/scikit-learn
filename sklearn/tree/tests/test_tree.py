@@ -548,10 +548,13 @@ def test_error():
         with pytest.raises(ValueError):
             est.predict_proba(X2)
 
-        # store_tree_astype must be floating when using float weights
+        # store_tree_astype must be float when not using postive int weights
         with pytest.raises(ValueError):
-            TreeEstimator(store_tree_astype=np.int32).fit(
+            TreeEstimator(store_tree_astype=np.uint32).fit(
                 X, y, sample_weight=np.ones_like(y) + 0.1)
+        with pytest.raises(ValueError):
+            TreeEstimator(store_tree_astype=np.uint32).fit(
+                X, y, sample_weight=np.ones_like(y) - 2)
 
     for name, TreeEstimator in ALL_TREES.items():
         with pytest.raises(ValueError):
@@ -641,7 +644,7 @@ def test_error():
     for name, TreeEstimator in REG_TREES.items():
         # integer types for store_tree_astype with regressor
         with pytest.raises(ValueError):
-            TreeEstimator(store_tree_astype=np.int32).fit(X, y)
+            TreeEstimator(store_tree_astype=np.uint32).fit(X, y)
 
     # non positive target for Poisson splitting Criterion
     est = DecisionTreeRegressor(criterion="poisson")
