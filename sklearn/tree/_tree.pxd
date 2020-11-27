@@ -64,7 +64,7 @@ cdef class Tree:
     cdef int _resize_c(self, SIZE_t capacity=*, bint resize_value=*
                        ) nogil except -1
 
-    cpdef convert_value_to_ndarray(self, object dtype)
+    cpdef convert_value_to_ndarray(self, object dtype, bint strict=*)
     cdef np.ndarray _get_value_ndarray(self)
     cdef np.ndarray _get_node_ndarray(self)
 

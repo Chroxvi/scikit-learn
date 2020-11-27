@@ -1096,9 +1096,44 @@ cdef class Tree:
 
         return importances
 
-    cpdef convert_value_to_ndarray(self, object dtype):
+    cpdef convert_value_to_ndarray(self, object dtype, bint strict=True):
         """Convert internal value data structure to NumPy array."""
-        self.value_ndarray = self._get_value_ndarray().astype(dtype)
+        dtype = np.dtype(dtype)
+        value_ndarray = self._get_value_ndarray()
+        allowed_float_dtypes = [np.float16, np.float32, np.float64]
+        allowed_int_dtypes =  [np.uint8, np.uint16, np.uint32, np.uint64]
+
+        # Input validation
+        if dtype in allowed_float_dtypes:
+            np_dt_info = np.finfo
+            allowed_dtypes = allowed_float_dtypes
+        elif dtype in allowed_int_dtypes:
+            np_dt_info = np.iinfo
+            allowed_dtypes = allowed_int_dtypes
+        else:
+            raise TypeError(
+                'Invalid dtype specified: {}. Valid values are: {}'.format(
+                    dtype, allowed_float_dtypes + allowed_int_dtypes))
+
+        # Check that dtype is able to hold the values
+        if strict:
+            dtype_options = [dtype]
+        else:
+            dtype_options = allowed_dtypes[allowed_dtypes.index(dtype):]
+        for dtype in dtype_options:
+            dtype_info = np_dt_info(dtype)
+            if np.all((value_ndarray >= dtype_info.min) &
+                      (value_ndarray <= dtype_info.max)):
+                # the current dtype option is acceptable
+                break
+            else:
+                # default to "largest" allowed dtype or raise error if the
+                # requested dtype is strictly required
+                if strict:
+                    raise ValueError(
+                        'The requested dtype is unable to contain the values.')
+
+        self.value_ndarray = value_ndarray.astype(dtype)
         free(self.value)
         self.value = NULL
 

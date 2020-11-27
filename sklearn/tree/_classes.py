@@ -408,7 +408,8 @@ class BaseDecisionTree(MultiOutputMixin, BaseEstimator, metaclass=ABCMeta):
         self._prune_tree()
 
         if self.store_tree_astype is not None:
-            self.tree_.convert_value_to_ndarray(self.store_tree_astype)
+            self.tree_.convert_value_to_ndarray(
+                self.store_tree_astype, strict=False)
 
         return self
 

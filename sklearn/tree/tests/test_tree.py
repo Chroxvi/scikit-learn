@@ -15,6 +15,8 @@ from scipy.sparse import coo_matrix
 
 from sklearn.random_projection import _sparse_random_matrix
 
+from sklearn.datasets import make_classification
+
 from sklearn.dummy import DummyRegressor
 
 from sklearn.metrics import accuracy_score
@@ -2205,7 +2207,7 @@ def test_convert_tree_value_to_ndarray_reg(name, Tree, tree_value_dtype):
 @pytest.mark.parametrize('name, Tree', ALL_TREES.items())
 @pytest.mark.parametrize('tree_value_dtype', REG_TREE_VALUE_DTYPES)
 def test_pickle(name, Tree, tree_value_dtype):
-    tree = tree = Tree(random_state=0, store_tree_astype=tree_value_dtype)
+    tree = Tree(random_state=0, store_tree_astype=tree_value_dtype)
     tree.fit(X, y)
     score = tree.score(X, y)
     pickle_object = pickle.dumps(tree)
@@ -2219,3 +2221,34 @@ def test_pickle(name, Tree, tree_value_dtype):
             tree2.tree_.value.base.flags.owndata)
     score2 = tree2.score(X, y)
     assert score == score2
+
+
+@pytest.mark.parametrize('name, Tree', ALL_TREES.items())
+def test_tree_convert_value_to_ndarray(name, Tree):
+    tree = Tree(random_state=0, store_tree_astype=None)
+    tree.fit(X, y)
+
+    # Error on invalid dtype
+    with pytest.raises(TypeError):
+        tree.tree_.convert_value_to_ndarray('failure')
+
+    # Correct conversion
+    if name in REG_TREES:
+        tree.tree_.convert_value_to_ndarray('float32')
+        assert tree.tree_.value.dtype == np.float32
+
+    if name in CLF_TREES:
+        tree.tree_.convert_value_to_ndarray('uint8')
+        assert tree.tree_.value.dtype == np.uint8
+
+        # Error on strict impossible conversion
+        X_l, y_l = make_classification(
+            n_samples=500, n_informative=10, n_features=300,
+            n_classes=450, random_state=6021)
+        tree.fit(X_l, y_l)
+        with pytest.raises(ValueError):
+            tree.tree_.convert_value_to_ndarray('uint8', strict=True)
+
+        # Non-strict conversion
+        tree.tree_.convert_value_to_ndarray('uint8', strict=False)
+        assert tree.tree_.value.dtype == np.uint16
