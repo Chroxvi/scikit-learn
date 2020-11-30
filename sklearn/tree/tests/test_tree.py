@@ -15,8 +15,6 @@ from scipy.sparse import coo_matrix
 
 from sklearn.random_projection import _sparse_random_matrix
 
-from sklearn.datasets import make_classification
-
 from sklearn.dummy import DummyRegressor
 
 from sklearn.metrics import accuracy_score
@@ -2234,21 +2232,13 @@ def test_tree_convert_value_to_ndarray(name, Tree):
 
     # Correct conversion
     if name in REG_TREES:
-        tree.tree_.convert_value_to_ndarray('float32')
+        tree.tree_.convert_value_to_ndarray('float32', strict=True)
+        assert tree.tree_.value.dtype == np.float32
+        tree.tree_.convert_value_to_ndarray('float32', strict=False)
         assert tree.tree_.value.dtype == np.float32
 
     if name in CLF_TREES:
         tree.tree_.convert_value_to_ndarray('uint8')
         assert tree.tree_.value.dtype == np.uint8
-
-        # Error on strict impossible conversion
-        X_l, y_l = make_classification(
-            n_samples=500, n_informative=10, n_features=300,
-            n_classes=450, random_state=6021)
-        tree.fit(X_l, y_l)
-        with pytest.raises(ValueError):
-            tree.tree_.convert_value_to_ndarray('uint8', strict=True)
-
-        # Non-strict conversion
         tree.tree_.convert_value_to_ndarray('uint8', strict=False)
-        assert tree.tree_.value.dtype == np.uint16
+        assert tree.tree_.value.dtype == np.uint8
