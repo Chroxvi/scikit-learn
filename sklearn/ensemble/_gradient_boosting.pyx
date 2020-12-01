@@ -211,12 +211,13 @@ def predict_stages(np.ndarray[object, ndim=2] estimators,
                 value_converted_to_ndarray = True
 
     if value_converted_to_ndarray:
-        # The below fast tracks use tree.value and are, thus, not an option
-        # when it has been converteed to an ndarray
+        # Fallback to "naive" solution when the tree.value array has been
+        # converted to an ndarray. The below fast tracks rely on tree.value
+        # still being managed by the tree.
         for i in range(n_estimators):
             for k in range(K):
                 tree = estimators[i, k].tree_
-                out += scale * tree.predict(X).reshape((X.shape[0], 1))
+                out[:, k] += scale * tree.predict(X).ravel()
     elif issparse(X):
         if X.format != 'csr':
             raise ValueError("When X is a sparse matrix, a CSR format is"
@@ -234,12 +235,12 @@ def predict_stages(np.ndarray[object, ndim=2] estimators,
                 # avoid buffer validation by casting to ndarray
                 # and get data pointer
                 # need brackets because of casting operator priority
+                # a fast track for out[:, k] += scale * tree.predict(X).ravel()
                 _predict_regression_tree_inplace_fast_dense(
                     <DTYPE_t*> (<np.ndarray> X).data,
                     tree.nodes, tree.value,
                     scale, k, K, X.shape[0], X.shape[1],
                     <float64 *> (<np.ndarray> out).data)
-                ## out += scale * tree.predict(X).reshape((X.shape[0], 1))
 
 
 def predict_stage(np.ndarray[object, ndim=2] estimators,
