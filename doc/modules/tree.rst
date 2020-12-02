@@ -391,6 +391,9 @@ Tips on practical use
     matrix input compared to a dense matrix when features have zero values in
     most of the samples.
 
+  * A smaller resulting model (in terms of memory usage) may obtained by setting
+    ``store_tree_astype``. See :ref:`store_tree_astype_usage` for the details.
+
 
 .. _tree_algorithms:
 
@@ -599,3 +602,38 @@ be pruned. This process stops when the pruned tree's minimal
 
     * T. Hastie, R. Tibshirani and J. Friedman. Elements of Statistical
       Learning, Springer, 2009.
+
+
+.. _store_tree_astype_usage:
+
+Efficiently Storing The Tree
+============================
+
+All the decision tree based classes :class:`DecisionTreeClassifier`,
+:class:`DecisionTreeRegressor`, :class:`ExtraTreeClassifier`,
+:class:`ExtraTreeRegressor`,
+:class:`~sklearn.ensemble.GradientBoostingClassifier`,
+:class:`~sklearn.ensemble.GradientBoostingRegressor`,
+:class:`~sklearn.ensemble.RandomForestClassifier`,
+:class:`~sklearn.ensemble.RandomForestRegressor`,
+:class:`~sklearn.ensemble.ExtraTreesClassifier`,  and
+:class:`~sklearn.ensemble.ExtraTreesRegressor` allow for efficiently
+(in terms of memory usage) storing the underlying tree(s) by
+specifying the ``store_tree_astype`` parameter, e.g.
+
+    >>> from pickle import dumps
+    >>> from sklearn import tree, datasets
+    >>> X, y = datasets.make_classification(
+    ... n_features=100, n_informative=20, n_classes=30, random_state=0)
+    >>> clf_1 = tree.DecisionTreeClassifier()
+    >>> clf_1 = clf_1.fit(X, y)
+    >>> print('Size of clf_1: {}'.format(len(dumps(clf_1))))  # doctest: +SKIP
+    Size of clf_1: 36012
+    >>> clf_2 = tree.DecisionTreeClassifier(store_tree_astype='uint8')
+    >>> clf_2 = clf_2.fit(X, y)
+    >>> print('Size of clf_2: {}'.format(len(dumps(clf_2))))  # doctest: +SKIP
+    Size of clf_2: 11478
+
+
+Warning: Storing the tree using a dtype with a smaller itemsize,
+e.g. float32 instead of float64, may lead to a loss of precision in predictions.

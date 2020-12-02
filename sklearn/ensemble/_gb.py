@@ -974,6 +974,26 @@ class GradientBoostingClassifier(ClassifierMixin, BaseGradientBoosting):
 
         .. versionadded:: 0.22
 
+    store_tree_astype : str or dtype, default=None
+        The dtype to store the fitted tree value array as. Valid dtypes are
+        "float64", "float32", and "float16". The default, None, results in
+        the value array being handled by the tree as "float64".
+
+        Choosing a dtype with smaller itemsize may significantly reduce the
+        size of the fitted tree.
+
+        Note that the fitted tree may end up being stored in a dtype with a
+        larger itemsize, if the specified dtype is unable to store the tree,
+        e.g. "float32" instead of "float16".
+
+        Warning: When not None, this disables the "fast track" for predictions.
+        Thus, the reduced model size comes at the cost of predictions being
+        ~5 times slower.
+
+        See :ref:`store_tree_astype_usage` for more details.
+
+        .. versionadded:: 0.24
+
     Attributes
     ----------
     n_estimators_ : int
@@ -1506,6 +1526,26 @@ class GradientBoostingRegressor(RegressorMixin, BaseGradientBoosting):
         :ref:`minimal_cost_complexity_pruning` for details.
 
         .. versionadded:: 0.22
+
+    store_tree_astype : str or dtype, default=None
+        The dtype to store the fitted tree value array as. Valid dtypes are
+        "float64", "float32", and "float16". The default, None, results in
+        the value array being handled by the tree as "float64".
+
+        Choosing a dtype with smaller itemsize may significantly reduce the
+        size of the fitted tree.
+
+        Note that the fitted tree may end up being stored in a dtype with a
+        larger itemsize, if the specified dtype is unable to store the tree,
+        e.g. "float32" instead of "float16".
+
+        Warning: When not None, this disables the "fast track" for predictions.
+        Thus, the reduced model size comes at the cost of predictions being
+        ~5 times slower.
+
+        See :ref:`store_tree_astype_usage` for more details.
+
+        .. versionadded:: 0.24
 
     Attributes
     ----------
